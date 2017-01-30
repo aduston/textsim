@@ -56,6 +56,26 @@ func ConvertToShingles(tokens []uint64, rollingHash RollingHash) []uint64 {
 	return shingles
 }
 
+func ConvertToMinHashes(tokens []uint64, rollingHashes []RollingHash) []uint64 {
+	minimums := make([]uint64, len(rollingHashes))
+	for i := range minimums {
+		minimums[i] = math.MaxUint64
+	}
+	for i, token := range tokens {
+		for j, rollingHash := range rollingHashes {
+			rollingHash.Roll(toBytes64(token))
+			if i >= rollingHash.Size()-1 {
+				v := minimums[j]
+				hv := rollingHash.Sum64()
+				if hv < v {
+					minimums[j] = hv
+				}
+			}
+		}
+	}
+	return minimums
+}
+
 func CalcMinHashes(shingles []uint64, hash1, hash2 hash.Hash64, size int) []uint64 {
 	h1, h2 := makePermHashes(hash1, hash2)
 	minimums := make([]uint64, size)

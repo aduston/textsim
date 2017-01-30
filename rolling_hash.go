@@ -3,7 +3,7 @@ package textsim
 import (
 	"hash"
 
-	"github.com/kevinko/rabin"
+	"github.com/aduston/rabin"
 )
 
 type RollingHash interface {

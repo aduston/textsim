@@ -9,8 +9,8 @@ import (
 	"os"
 	"testing"
 
+	"github.com/aduston/rabin"
 	spooky "github.com/dgryski/go-spooky"
-	"github.com/kevinko/rabin"
 )
 
 func tokenize(s string, wordHash hash.Hash64) uint64 {
