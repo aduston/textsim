@@ -146,16 +146,13 @@ func BenchmarkPermutationFnv(b *testing.B) {
 	for i, lineTokens := range tokens {
 		shingles[i] = ConvertToShingles(lineTokens, rollingHash)
 	}
-	fnv1 := fnv.New64a()
-	fnv2 := fnv.New64a()
+	h1, h2 := MakePermHashes(fnv.New64a(), fnv.New64a())
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
-		fnv1.Reset()
-		fnv2.Reset()
 		for _, lineShingles := range shingles {
-			CalcMinHashes(lineShingles, fnv1, fnv2, 1)
+			CalcMinHashes(lineShingles, h1, h2, 1)
 		}
 	}
 }

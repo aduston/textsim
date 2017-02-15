@@ -3,7 +3,6 @@ package textsim
 import (
 	"encoding/binary"
 	"hash"
-	"hash/fnv"
 	"math"
 	"math/rand"
 	"unicode"
@@ -76,8 +75,7 @@ func ConvertToMinHashes(tokens []uint64, rollingHashes []RollingHash) []uint64 {
 	return minimums
 }
 
-func CalcMinHashes(shingles []uint64, hash1, hash2 hash.Hash64, size int) []uint64 {
-	h1, h2 := makePermHashes(hash1, hash2)
+func CalcMinHashes(shingles []uint64, h1, h2 Hash64, size int) []uint64 {
 	minimums := make([]uint64, size)
 	for i := range minimums {
 		minimums[i] = math.MaxUint64
@@ -97,7 +95,7 @@ func CalcMinHashes(shingles []uint64, hash1, hash2 hash.Hash64, size int) []uint
 	return minimums
 }
 
-func makePermHashes(hash1, hash2 hash.Hash64) (h1, h2 Hash64) {
+func MakePermHashes(hash1, hash2 hash.Hash64) (h1, h2 Hash64) {
 	// TODO: make truly random
 	r := rand.New(rand.NewSource(int64(42)))
 	b := binary.LittleEndian
@@ -105,19 +103,17 @@ func makePermHashes(hash1, hash2 hash.Hash64) (h1, h2 Hash64) {
 	b2 := make([]byte, 8)
 	b.PutUint64(b1, uint64(r.Int63()))
 	b.PutUint64(b2, uint64(r.Int63()))
-	fnv1 := fnv.New64a()
-	fnv2 := fnv.New64a()
 	h1 = func(b []byte) uint64 {
-		fnv1.Reset()
-		fnv1.Write(b1)
-		fnv1.Write(b)
-		return fnv1.Sum64()
+		hash1.Reset()
+		hash1.Write(b1)
+		hash1.Write(b)
+		return hash1.Sum64()
 	}
 	h2 = func(b []byte) uint64 {
-		fnv2.Reset()
-		fnv2.Write(b2)
-		fnv2.Write(b)
-		return fnv2.Sum64()
+		hash2.Reset()
+		hash2.Write(b2)
+		hash2.Write(b)
+		return hash2.Sum64()
 	}
 	return
 }
