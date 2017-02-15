@@ -4,11 +4,46 @@ import (
 	"encoding/binary"
 	"hash"
 	"math"
+	"math/big"
 	"math/rand"
 	"unicode"
 )
 
+const kMersennePrime = (uint64(1) << 61) - 1
+
+var kBigMersennePrime = big.NewInt(0).SetUint64(kMersennePrime)
+
 type Hash64 func([]byte) uint64
+
+// LinearHashFunction is a direct translation of
+// http://citeseerx.ist.psu.edu/viewdoc/download?doi=10.1.1.121.8215&rep=rep1&type=pdf
+// and appears to be the approach most commonly used in practice.
+type LinearHashFunction struct {
+	A    uint64
+	B    uint64
+	bigA *big.Int
+	bigB *big.Int
+}
+
+func (l *LinearHashFunction) Hash(x uint64) uint64 {
+	bigX := big.NewInt(0).SetUint64(x)
+	bigX.Mul(bigX, l.bigA)
+	bigX.Add(bigX, l.bigB)
+	bigX.Mod(bigX, kBigMersennePrime)
+	return bigX.Uint64()
+}
+
+func NewRandomLinearFunction() *LinearHashFunction {
+	// TODO: seed
+	a := uint64(1 + rand.Int63n(int64(kMersennePrime-1)))
+	b := uint64(rand.Int63n(int64(kMersennePrime)))
+	return &LinearHashFunction{
+		A:    a,
+		B:    b,
+		bigA: big.NewInt(0).SetUint64(a),
+		bigB: big.NewInt(0).SetUint64(b),
+	}
+}
 
 // Tokenize takes a utf-8 string. Every maximal aphanumeric sequence
 // is considered a term and is hashed using wordHash to generate tokens.
@@ -55,6 +90,10 @@ func ConvertToShingles(tokens []uint64, rollingHash RollingHash) []uint64 {
 	return shingles
 }
 
+// ConvertToMinHashes directly converts a slice of tokens to a slice
+// of k minhashes by applying k rolling hashes. In practice, the k
+// rolling hashes are Rabin fingerprints using k different irreducible
+// polynomials over GF(2) of degree < 64.
 func ConvertToMinHashes(tokens []uint64, rollingHashes []RollingHash) []uint64 {
 	minimums := make([]uint64, len(rollingHashes))
 	for i := range minimums {
@@ -75,7 +114,7 @@ func ConvertToMinHashes(tokens []uint64, rollingHashes []RollingHash) []uint64 {
 	return minimums
 }
 
-func CalcMinHashes(shingles []uint64, h1, h2 Hash64, size int) []uint64 {
+func CalcMinHashesDGryski(shingles []uint64, h1, h2 Hash64, size int) []uint64 {
 	minimums := make([]uint64, size)
 	for i := range minimums {
 		minimums[i] = math.MaxUint64
@@ -116,4 +155,28 @@ func MakePermHashes(hash1, hash2 hash.Hash64) (h1, h2 Hash64) {
 		return hash2.Sum64()
 	}
 	return
+}
+
+func CalcMinHashesLinear(shingles []uint64, linearHashes []*LinearHashFunction) []uint64 {
+	minimums := make([]uint64, len(linearHashes))
+	for i := range minimums {
+		minimums[i] = math.MaxUint64
+	}
+	for _, shingle := range shingles {
+		for i, v := range minimums {
+			hv := linearHashes[i].Hash(shingle)
+			if hv < v {
+				minimums[i] = hv
+			}
+		}
+	}
+	return minimums
+}
+
+func GenerateLinearMinHashParms(num int) []*LinearHashFunction {
+	linearHashFunctions := make([]*LinearHashFunction, num)
+	for i := 0; i < num; i++ {
+		linearHashFunctions[i] = NewRandomLinearFunction()
+	}
+	return linearHashFunctions
 }

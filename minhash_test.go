@@ -132,7 +132,7 @@ func BenchmarkConvertToShinglesFnv(b *testing.B) {
 	benchmarkConvertToShingles(b, NewRegHashRollingHash(fnv.New64a(), 4))
 }
 
-func BenchmarkPermutationFnv(b *testing.B) {
+func makeShingles(b *testing.B, fileNo int) [][]uint64 {
 	rollingHash := NewRegHashRollingHash(fnv.New64a(), 4)
 	lines, err := readText(0)
 	if err != nil {
@@ -146,13 +146,30 @@ func BenchmarkPermutationFnv(b *testing.B) {
 	for i, lineTokens := range tokens {
 		shingles[i] = ConvertToShingles(lineTokens, rollingHash)
 	}
+	return shingles
+}
+
+func BenchmarkPermutationFnv(b *testing.B) {
+	shingles := makeShingles(b, 0)
 	h1, h2 := MakePermHashes(fnv.New64a(), fnv.New64a())
 
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
 		for _, lineShingles := range shingles {
-			CalcMinHashes(lineShingles, h1, h2, 1)
+			CalcMinHashesDGryski(lineShingles, h1, h2, 1)
+		}
+	}
+}
+
+func BenchmarkPermutationLinear(b *testing.B) {
+	shingles := makeShingles(b, 0)
+	hashFuncs := GenerateLinearMinHashParms(1)
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		for _, lineShingles := range shingles {
+			CalcMinHashesLinear(lineShingles, hashFuncs)
 		}
 	}
 }
